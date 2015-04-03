@@ -1,5 +1,10 @@
 Autopilot provides Electronic Navigation, Communication, and Targeting Systems
 
+[url=http://forum.keenswh.com/threads/mod-autopilot.7227970/] Deutsche Übersetzung von Robinson C. [/url]
+
+[b]There is now a different method for writing detected grids to a text panel.[/b]
+Instead of writing [ <panel name> ] in an antenna's name, write [ Display Detected ] in the text panel's name.
+
 [h1]Mod Features[/h1]
 Automatic docking & landing
 Patrol
@@ -8,12 +13,12 @@ Fly to world GPS location
 Fly a certain distance relative to ship
 Formations/Orientation matching
 Command looping
-Speed Control 
+Speed Control
 Obstacle detection & collision avoidance
-Engage Enemy ships/stations 
+Engage Enemy ships/stations
 Radar
 Act as a missle and target a block on a an enemy ship/station
-(In development) Smart Turret Control - Allows you to set priorities for your turrets. 
+(In development) Smart Turret Control - Allows you to set priorities for your turrets.
             --This allows you to disable, but not completely destroy an enemy ship/station (grid)
 
 [h1]Contribute[/h1]
@@ -58,6 +63,9 @@ Example - [ C 0, 0 , 0 : W 60 : C 500, 500, 500 : EXIT ] - Will wait for 60 seco
 A <block>, <action> : Run an action on one or more blocks. <action> is case-sensitive. Autopilot will find every block that contains <block>, find the ITerminalAction that matches <action>, and apply it. Block must have faction share with remote's owner.
 Example - [ A Thrust, OnOff_On ] - turn all the thrusters on
 
+Asteroid : Disable asteroid collision avoidance, only affects the next destination.
+Example - [ Asteroid : C 0,0,0 : C 1000,0,0 ] - fly to 0,0,0 ignoring asteroids, fly to 1000,0,0 avoiding asteroids
+
 B <name> : for navigating to a specific block on a grid, will only affect the next use of G, E, or M. For friendly grids uses the display name; for hostile grids the definition name. Target block must be working.
 Example - [ B Antenna : G Platform ] - fly to Antenna on Platform
 Example - [ B Reactor : E 0 ] - will only target an enemy with a working reactor
@@ -90,6 +98,11 @@ Example - [ R Forward : B Antenna : G Platform ] - fly to Antenna on Platform, t
 R <f>, <u> : match orientation (direction and roll). <f> as above. <u> which block direction will be Remote Control's Up
 Example - [ R Forward, Upward : B Antenna : G Platform ] - fly to Antenna on Platform, then face Remote Control to antenna forward, then roll so that Antenna's Upward will match Remote Control's upward.
 
+T <name> : fetch commands from the public text of a text panel named <name>, starting at the first [ and ending at the first following ]
+Example - [ T Command Panel ] - fetch commands from "Command Panel"
+T <name>, <sub> : as above, the search for [ and ] will begin after the first occurrence of <sub>. It is recommend to make <sub> unique, so that it will not be confused with anything else.
+Example - [ T Command Panel, {Line 4} ] - where "Command Panel" contains ... {Line 4} [ C 0,0,0 ] ... fly to {0,0,0}
+
 V <cruise> : when travelling faster than <cruise> reduce thrust (zero or very little thrust)
 Example - [ V 10 : C 0, 0, 0 : C 500, 500, 500 ] - fly back and forth between {0, 0, 0} and {500, 500, 500}, cruising when above 10m/s. The default for <cruise> is set in the settings file.
 V <cruise>, <slow> : when speed is below <cruise>, accelerate; when speed is between <cruise> and <slow>, cruise; when speed is above <slow>, decelerate. The default for <cruise> is set in the settings file, the default for <slow> is infinity (practically).
@@ -108,16 +121,18 @@ Example - [ V 10, 20 : C 0, 0, 0 : C 500, 500, 500 ] - fly back and forth betwee
 [h1]Autopilot States[/h1]
 <OFF> remote control has not searched for commands, EXIT was reached, or the remote control is not ready
 <PATHFINDING> searching for a path towards the destination
+<NO_PATH> could not find a path to the destination
+<NO_DEST> could not find a valid target or destination, this state is usually temporary
+<ERROR:(index)> Displays the index of the commands that could not be executed. The first command is at 0.
+<WAITING:(time)> a wait command was reached, display time remaining
 <ROTATING> rotating the ship
 <MOVING> heading towards the next stop
 <STOPPING> stopping the grid
-<NO_PATH> could not find a path to the destination
-<NO_DEST> could not find a valid target or destination, this state is usually temporary
 <MISSILE> found a target, going to hit it
 <ENGAGING> found a target, flying towards it
+<LANDED> grid is landed
 <PLAYER> A player is controlling grid
-<GET_OUT_OF_SEAT> Autopilot cannot disconnect a connector while a player is in a seat.
-<BROKEN> Congratulations! You found a bug, [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/622954023412161440] please report it [/url].
+<GET_OUT_OF_SEAT> Autopilot cannot disconnect a connector or landing gear while a player is in a seat.
 
 [h1]More Information[/h1]
 To reset the Autopilot: disable "Control Thrusters", wait a second, turn it back on.
@@ -128,8 +143,7 @@ In order for Autopilot to control a grid, it must have a gyroscope, have thruste
 All commands are in the display name of a Remote Control block.
 [] All commands are contained within a single set of square brackets
 <> Do not use angle brackets in your Remote Control's name
-: Commands are separated by colons
-X # : Commands are identified by a single character, followed by information to use
+:; Commands are separated by colons and/or semicolons
 Variables P and V affect all destinations that come after
   Interpreter ignores all spaces
 Aa Interpreter is case insensitve
@@ -153,8 +167,10 @@ Each antenna and remote control keeps track of the last time a grid was seen, wh
 It is not possible for Autopilot to display entities on the HUD.
 
 [h1]Block Communication[/h1]
+[url=http://steamcommunity.com/sharedfiles/filedetails/?id=391453613] This script [/url] can be used to send and receive messages, filter detected grids, and execute actions based on detected grids.
 Messages can be sent from one programmable block to another. Block communication will use antenna relay to send messages to other grids.
-An in-game script, [url=http://steamcommunity.com/sharedfiles/filedetails/?id=391453613] available here [/url], is used to parse messages and includes an example of how to send a message.
+Block Communication can read detected grid information, apply filters, execute actions, and write to a TextPanel.
+For usage, see the script itself.
 
 [h1]Smart Turret Control[/h1]
 Turret control is in testing stage, it must be enabled in Settings to work. set:
@@ -164,12 +180,15 @@ Turrets can be given specific instructions on which targets to shoot; for blocks
 In order for Smart Turret Control to function, a turret must have square brackets in its name. Smart Turrets will only search for missiles and/or blocks when an attached antenna is detecting a nearby enemy.
 Most of the work for Smart Turret Control is done in a separate thread; having lots of turrets running will not slow down S.E. but will make turrets less responsive.
 
+Block targets are fetched from the turret's name [ <definition1>, <definition2>, ... ] and target working hostile blocks in order.
+Example - [ Turret, Rocket, Gatling, Reactor, Battery ] - First shoot all turrets, then rocket launchers, then gatling weapons, then reactors, then batteries.
+
 [b]Priorities[/b] - highest to lowest
 If Target Missiles is enabled, shoot missiles that are approaching the turret.
-If Target Meteors is enabled, shoot meteors.
-If Target Moving Objects is enabled, shoot enemy characters.
-Get a list of block definitions from the turret's name [ <definition1>, <definition2>, ... ] and target working hostile blocks in order.
-Example - [ Turret, Rocket, Gatling, Reactor, Battery ] - First shoot all turrets, then rocket launchers, then gatling weapons, then reactors, then batteries.
+If Target Meteors is enabled, shoot meteors that are approaching the turret.
+If Target Characters is enabled, shoot enemy characters.
+If a list of block targets is provided, shoot blocks.
+If Target Moving Objects is enabled, shoot hostile grids that are approaching the turret.
 
 [h1]Settings[/h1]
 The file at "%AppData%\SpaceEngineers\Storage\363880940.sbm_Autopilot\AutopilotSettings.txt" contains the settings for Autopilot.

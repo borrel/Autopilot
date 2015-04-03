@@ -124,6 +124,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			private Vector3D wayDest;
 			private Sandbox.ModAPI.IMyCubeGrid destGrid;
 			private GridDimensions myGridDims;
+			private bool ignoreAsteroids;
 
 			/// <summary>
 			/// be sure to get a new one after a reset, CNS changes will not be respected
@@ -132,9 +133,13 @@ namespace Rynchodon.Autopilot.Pathfinder
 			/// <returns></returns>
 			public CollisionAvoidance(ref NavSettings CNS, GridDimensions gridDims)
 			{
+				VRage.Exceptions.ThrowIf<ArgumentNullException>(CNS == null, "CNS");
+				VRage.Exceptions.ThrowIf<ArgumentNullException>(gridDims == null, "gridDims");
+
 				this.CNS = CNS;
 				this.wayDest = (Vector3D)CNS.getWayDest();
 				this.myGridDims = gridDims;
+				this.ignoreAsteroids = CNS.ignoreAsteroids;
 				myLogger = new Logger(gridDims.myGrid.DisplayName, "CollisionAvoidance");
 
 				// decide whether to use collision avoidance or slowdown
@@ -147,22 +152,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 						break;
 					case NavSettings.TypeOfWayDest.LAND:
 					default:
-						if (CNS.landingState == NavSettings.LANDING.OFF)
-						{
-							this.destGrid = null;
-							//log(myLogger, "landingState == OFF, avoiding destination grid: " + CNS.gridDestination.DisplayName + " : " + this.destGrid, ".ctor()", Logger.severity.TRACE);
-						}
-						else
-						{
+						if (CNS.landingState != NavSettings.LANDING.OFF && CNS.CurrentGridDest != null)
 							this.destGrid = CNS.CurrentGridDest.Grid;
-							//log(myLogger, "landing, not avoiding destination grid: " + CNS.gridDestination.DisplayName + " : " + this.destGrid, ".ctor()", Logger.severity.TRACE);
-						}
 						break;
-					//default:
-					//	// run collision avoidance on aproach
-					//	this.destGrid = null;
-					//	log(myLogger, "state = "+CNS.getTypeOfWayDest()+", avoiding destination grid: " + CNS.gridDestination.DisplayName + " : " + this.destGrid, ".ctor()", Logger.severity.DEBUG);
-					//	break;
 				}
 
 				log(myLogger, "created CollisionAvoidance", ".ctor()", Logger.severity.TRACE);
@@ -204,7 +196,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 				if (currentStage == stage.S0_start)
 				{
 					//log("building new CanFlyTo("+wayDest+", "+gridDestination+", "+remoteControl+", "+collisionLength+", "+stopFromDestGrid+")");
-					currentCFT = new CanFlyTo(wayDest, destGrid, myGridDims, false); //new CanFlyTo(wayDest, gridDestination, remoteControl, straightRadius, 0, distance_from_RC_to_front);
+					currentCFT = new CanFlyTo(wayDest, destGrid, myGridDims, false, ignoreAsteroids); //new CanFlyTo(wayDest, gridDestination, remoteControl, straightRadius, 0, distance_from_RC_to_front);
 					advanceStage();
 				}
 
@@ -285,7 +277,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 							advanceStage();
 							continue;
 						}
-						currentCFT = new CanFlyTo(waypoint, destGrid, myGridDims, true);
+						currentCFT = new CanFlyTo(waypoint, destGrid, myGridDims, true, ignoreAsteroids);
 						//currentCFT = new CanFlyTo(waypoint, gridDestination, remoteControl, alternateRadius, alternateProjection, distance_from_RC_to_front);
 						setupAltRoute = false;
 					}
@@ -348,12 +340,14 @@ namespace Rynchodon.Autopilot.Pathfinder
 			private Spheres collisionSpheres;
 			private bool isValid = true;
 			private AttachedGrids myAttached;
+			private bool ignoreAsteroids;
 
-			public CanFlyTo(Vector3D destination, Sandbox.ModAPI.IMyCubeGrid gridDest, GridDimensions gridDims, bool isAlternate)
+			public CanFlyTo(Vector3D destination, Sandbox.ModAPI.IMyCubeGrid gridDest, GridDimensions gridDims, bool isAlternate, bool ignoreAsteroids)
 			{
 				this.myGrid = gridDims.myGrid;
 				this.gridDest = gridDest;
 				this.myAttached = AttachedGrids.getFor(gridDims.myGrid);
+				this.ignoreAsteroids = ignoreAsteroids;
 				myLogger = new Logger(gridDims.myGrid.DisplayName, "CanFlyTo");
 				collisionSpheres = new Spheres(destination, gridDims, isAlternate);
 				log(myLogger, "got grid dest: " + this.gridDest, ".ctor()", Logger.severity.TRACE);
@@ -482,8 +476,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 				IMyCubeGrid grid = entity as IMyCubeGrid;
 				if (grid == null)
 				{
-					log(myLogger, "not a grid, using old test: " + getEntityName(entity), "entityIntersectsWithSphere()", Logger.severity.DEBUG);
-					return true;
+					log(myLogger, "Asteroid: " + entity.getBestName() + ", " + !ignoreAsteroids, "entityIntersectsWithSphere()", Logger.severity.DEBUG);
+
+					return !ignoreAsteroids;
 					//return entity.GetIntersectionWithSphere(ref sphere); // not at all reliable
 				}
 				expensiveTest = true;
