@@ -19,7 +19,7 @@ namespace Rynchodon.AntennaRelay
 	public class RadioAntenna : Receiver
 	{
 		private static List<RadioAntenna> value_registry = new List<RadioAntenna>();
-		public static IReadOnlyList<RadioAntenna> registry { get { return value_registry.AsReadOnly(); } }
+		public static ReadOnlyList<RadioAntenna> registry { get { return new ReadOnlyList<RadioAntenna>(value_registry); } }
 
 		private Ingame.IMyRadioAntenna myRadioAntenna;
 
@@ -72,7 +72,7 @@ namespace Rynchodon.AntennaRelay
 					ant.receive(self);
 
 				// relay information to friendlies
-				foreach (RadioAntenna ant in registry)
+				foreach (RadioAntenna ant in value_registry)
 					if (CubeBlock.canSendTo(ant.CubeBlock, true, radiusSquared, true))
 					{
 						foreach (LastSeen seen in myLastSeen.Values)

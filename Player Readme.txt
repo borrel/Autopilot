@@ -173,9 +173,6 @@ Block Communication can read detected grid information, apply filters, execute a
 For usage, see the script itself.
 
 [h1]Smart Turret Control[/h1]
-Turret control is in testing stage, it must be enabled in Settings to work. set:
-[code]bTestingTurretControl=true[/code]
-If the turrets are tracking targets but not firing, try changing ownership to nobody, then back again.
 Turrets can be given specific instructions on which targets to shoot; for blocks the turret will attempt to disable rather than destroy.
 In order for Smart Turret Control to function, a turret must have square brackets in its name. Smart Turrets will only search for missiles and/or blocks when an attached antenna is detecting a nearby enemy.
 Most of the work for Smart Turret Control is done in a separate thread; having lots of turrets running will not slow down S.E. but will make turrets less responsive.
@@ -224,6 +221,7 @@ Multiplayer Testing - Degalus
 [url=http://steamcommunity.com/sharedfiles/filedetails/?id=363880940] On Steam [/url]
 [url=https://github.com/Rynchodon/Autopilot] On GitHub [/url]
 
+[b]I will not be responding to comments posted below, use one of these links or start a new discussion.[/b]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/611696927911256823/] Request a Feature [/url]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/622954023412161440/] Report a Bug [/url]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/611696927925580310/] Ask a Question [/url]
