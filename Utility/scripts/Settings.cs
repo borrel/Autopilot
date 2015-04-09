@@ -13,10 +13,10 @@ namespace Rynchodon
 	public static class Settings
 	{
 		// Settings
-		public enum BoolSetName : byte { bAllowJumpCreative, bAllowJumpSurvival, bAllowAutopilot, bAllowRadar, bAllowTurretControl, bTestingTurretControl }
+		public enum BoolSetName : byte { bAllowJumpCreative, bAllowJumpSurvival, bAllowAutopilot, bAllowRadar, bAllowTurretControl }
 		public enum IntSetName : byte { }
 		public enum FloatSetName : byte { fDefaultSpeed, fMaxSpeed }
-		public enum StringSetName : byte { sTurretDefaultPlayer, sTurretDefaultNPC }
+		public enum StringSetName : byte { sSmartTurretDefaultPlayer, sSmartTurretDefaultNPC }
 
 		public static Dictionary<BoolSetName, bool> boolSettings = new Dictionary<BoolSetName, bool>();
 		public static Dictionary<IntSetName, int> intSettings = new Dictionary<IntSetName, int>();
@@ -29,7 +29,7 @@ namespace Rynchodon
 		private static System.IO.TextWriter settingsWriter;
 
 		private static string strVersion = "Version";
-		private static int latestVersion = 22; // in sequence of updates on steam
+		private static int latestVersion = 23; // in sequence of updates on steam
 
 		private static Logger myLogger = new Logger(null, "Settings");
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
@@ -59,15 +59,14 @@ namespace Rynchodon
 			//boolSettings.Add(BoolSetName.bAllowMessaging, true);
 			boolSettings.Add(BoolSetName.bAllowRadar, true);
 			boolSettings.Add(BoolSetName.bAllowTurretControl, true);
-			boolSettings.Add(BoolSetName.bTestingTurretControl, false);
 
 			floatSettings.Add(FloatSetName.fDefaultSpeed, 100);
 			floatSettings.Add(FloatSetName.fMaxSpeed, float.MaxValue);
 			//floatSettings.Add(FloatSetName.fMinimumGridVolumeLarge, 100);
 			//floatSettings.Add(FloatSetName.fMinimumGridVolumeSmall, 10);
 
-			stringSettings.Add(StringSetName.sTurretDefaultNPC, "[ Turret, Rocket, Gatling, Reactor, Battery, Solar ]");
-			stringSettings.Add(StringSetName.sTurretDefaultPlayer, "[  ]");
+			stringSettings.Add(StringSetName.sSmartTurretDefaultNPC, "[ Warhead, Turret, Rocket, Gatling, Reactor, Battery, Solar ]");
+			stringSettings.Add(StringSetName.sSmartTurretDefaultPlayer, "");
 		}
 
 		/// <summary>
