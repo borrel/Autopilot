@@ -47,75 +47,87 @@ namespace Rynchodon.Autopilot.Turret
 
 		protected override void DelayedInit()
 		{
-			if (!Settings.boolSettings[Settings.BoolSetName.bAllowTurretControl])
-				return;
-
-			this.myCubeBlock = Entity as IMyCubeBlock;
-			this.myTerminal = Entity as IMyTerminalBlock;
-			this.myTurretBase = Entity as Ingame.IMyLargeTurretBase;
-			this.myLogger = new Logger(myCubeBlock.CubeGrid.DisplayName, "TurretBase", myCubeBlock.DisplayNameText);
-
-			myLogger.debugLog("created for: " + myCubeBlock.DisplayNameText, "DelayedInit()");
-			EnforcedUpdate = Sandbox.Common.MyEntityUpdateEnum.EACH_FRAME; // want as many opportunities to lock main thread as possible
-			if (!(myTurretBase.DisplayNameText.Contains("[") || myTurretBase.DisplayNameText.Contains("]")))
+			try
 			{
-				if (myTurretBase.OwnerId.Is_ID_NPC())
-					myTurretBase.SetCustomName(myTurretBase.DisplayNameText + " " + Settings.stringSettings[Settings.StringSetName.sSmartTurretDefaultNPC]);
-				else
-					myTurretBase.SetCustomName(myTurretBase.DisplayNameText + " " + Settings.stringSettings[Settings.StringSetName.sSmartTurretDefaultPlayer]);
+				if (!Settings.boolSettings[Settings.BoolSetName.bAllowTurretControl])
+					return;
+
+				this.myCubeBlock = Entity as IMyCubeBlock;
+				this.myTerminal = Entity as IMyTerminalBlock;
+				this.myTurretBase = Entity as Ingame.IMyLargeTurretBase;
+				this.myLogger = new Logger(myCubeBlock.CubeGrid.DisplayName, "TurretBase", myCubeBlock.DisplayNameText);
+
+				myLogger.debugLog("created for: " + myCubeBlock.DisplayNameText, "DelayedInit()");
+				EnforcedUpdate = Sandbox.Common.MyEntityUpdateEnum.EACH_FRAME; // want as many opportunities to lock main thread as possible
+				if (!(myTurretBase.DisplayNameText.Contains("[") || myTurretBase.DisplayNameText.Contains("]")))
+				{
+					if (myTurretBase.OwnerId.Is_ID_NPC())
+						myTurretBase.SetCustomName(myTurretBase.DisplayNameText + " " + Settings.stringSettings[Settings.StringSetName.sSmartTurretDefaultNPC]);
+					else
+						myTurretBase.SetCustomName(myTurretBase.DisplayNameText + " " + Settings.stringSettings[Settings.StringSetName.sSmartTurretDefaultPlayer]);
+				}
+
+				TurretBase_CustomNameChanged(null);
+				myTerminal.CustomNameChanged += TurretBase_CustomNameChanged;
+				myTerminal.OwnershipChanged += myTerminal_OwnershipChanged;
+
+				// definition limits
+				MyLargeTurretBaseDefinition definition = MyDefinitionManager.Static.GetCubeBlockDefinition(myCubeBlock.getSlimObjectBuilder()) as MyLargeTurretBaseDefinition;
+				minElevation = (float)Math.Max(definition.MinElevationDegrees / 180 * Math.PI, -0.6); // -0.6 was determined empirically
+				maxElevation = (float)Math.Min(definition.MaxElevationDegrees / 180 * Math.PI, Math.PI / 2);
+				minAzimuth = (float)(definition.MinAzimuthDegrees / 180 * Math.PI);
+				maxAzimuth = (float)(definition.MaxAzimuthDegrees / 180 * Math.PI);
+
+				myLogger.debugLog("definition limits = " + definition.MinElevationDegrees + ", " + definition.MaxElevationDegrees + ", " + definition.MinAzimuthDegrees + ", " + definition.MaxAzimuthDegrees, "DelayedInit()");
+				myLogger.debugLog("radian limits = " + minElevation + ", " + maxElevation + ", " + minAzimuth + ", " + maxAzimuth, "DelayedInit()");
 			}
-
-			TurretBase_CustomNameChanged(null);
-			myTerminal.CustomNameChanged += TurretBase_CustomNameChanged;
-			myTerminal.OwnershipChanged += myTerminal_OwnershipChanged;
-
-			// definition limits
-			MyLargeTurretBaseDefinition definition = MyDefinitionManager.Static.GetCubeBlockDefinition(myCubeBlock.getSlimObjectBuilder()) as MyLargeTurretBaseDefinition;
-			minElevation = (float)Math.Max(definition.MinElevationDegrees / 180 * Math.PI, -0.6); // -0.6 was determined empirically
-			maxElevation = (float)Math.Min(definition.MaxElevationDegrees / 180 * Math.PI, Math.PI / 2);
-			minAzimuth = (float)(definition.MinAzimuthDegrees / 180 * Math.PI);
-			maxAzimuth = (float)(definition.MaxAzimuthDegrees / 180 * Math.PI);
-
-			myLogger.debugLog("definition limits = " + definition.MinElevationDegrees + ", " + definition.MaxElevationDegrees + ", " + definition.MinAzimuthDegrees + ", " + definition.MaxAzimuthDegrees, "DelayedInit()");
-			myLogger.debugLog("radian limits = " + minElevation + ", " + maxElevation + ", " + minAzimuth + ", " + maxAzimuth, "DelayedInit()");
+			catch (Exception ex) { myLogger.log("Exception: " + ex, "DelayedInit()", Logger.severity.ERROR); }
 		}
 
 		public override void Close()
 		{
-			base.Close();
-			if (needToRelease)
-				lock_notMyUpdate.ReleaseExclusive();
+			try
+			{
+				base.Close();
+				if (needToRelease)
+					lock_notMyUpdate.ReleaseExclusive();
 
-			IMyTerminalBlock asTerm = myCubeBlock as IMyTerminalBlock;
-			if (asTerm != null)
-				asTerm.CustomNameChanged -= TurretBase_CustomNameChanged;
-			myCubeBlock = null;
-			myTurretBase = null;
-			controlEnabled = false;
+				IMyTerminalBlock asTerm = myCubeBlock as IMyTerminalBlock;
+				if (asTerm != null)
+					asTerm.CustomNameChanged -= TurretBase_CustomNameChanged;
+				myCubeBlock = null;
+				myTurretBase = null;
+				controlEnabled = false;
+			}
+			catch (Exception ex) { myLogger.log("Exception: " + ex, "Close()", Logger.severity.ERROR); }
 		}
 
 		private string previousInstructions;
 
 		private void TurretBase_CustomNameChanged(IMyTerminalBlock obj)
 		{
-			string instructions = myCubeBlock.getInstructions();
-			if (instructions == previousInstructions)
-				return;
-			previousInstructions = instructions;
-
-			//myLogger.debugLog("name changed to " + myCubeBlock.DisplayNameText + ", instructions = " + instructions, "TurretBase_CustomNameChanged()", Logger.severity.DEBUG);
-			if (string.IsNullOrWhiteSpace(instructions))
+			try
 			{
-				requestedBlocks = null;
-				CurrentState = State.OFF;
-				return;
+				string instructions = myCubeBlock.getInstructions();
+				if (instructions == previousInstructions)
+					return;
+				previousInstructions = instructions;
+
+				//myLogger.debugLog("name changed to " + myCubeBlock.DisplayNameText + ", instructions = " + instructions, "TurretBase_CustomNameChanged()", Logger.severity.DEBUG);
+				if (string.IsNullOrWhiteSpace(instructions))
+				{
+					requestedBlocks = null;
+					CurrentState = State.OFF;
+					return;
+				}
+				requestedBlocks = instructions.Split(',');
+				reset();
+				myLogger.debugLog("requestedBlocks = " + instructions, "TurretBase_CustomNameChanged()");
 			}
-			requestedBlocks = instructions.Split(',');
-			reset();
-			myLogger.debugLog("requestedBlocks = " + instructions, "TurretBase_CustomNameChanged()");
+			catch (Exception ex) { myLogger.log("Exception: " + ex, "TurretBase_CustomNameChanged()", Logger.severity.ERROR); }
 		}
 
-		void myTerminal_OwnershipChanged(IMyTerminalBlock obj)
+		private void myTerminal_OwnershipChanged(IMyTerminalBlock obj)
 		{
 			try
 			{
@@ -178,7 +190,7 @@ namespace Rynchodon.Autopilot.Turret
 							foreach (Receiver antenna in RadioAntenna.registry)
 								if (antenna.CubeBlock.canSendTo(myCubeBlock, true))
 								{
-									myLogger.debugLog("found attached antenna: " + antenna.CubeBlock.DisplayNameText, "UpdateAfterSimulation10()", Logger.severity.INFO);
+									myLogger.debugLog("found attached antenna: " + antenna.CubeBlock.DisplayNameText, "UpdateAfterSimulation()", Logger.severity.INFO);
 									myAntenna = antenna;
 									break;
 								}
@@ -186,13 +198,13 @@ namespace Rynchodon.Autopilot.Turret
 								foreach (Receiver antenna in LaserAntenna.registry)
 									if (antenna.CubeBlock.canSendTo(myCubeBlock, true))
 									{
-										myLogger.debugLog("found attached antenna: " + antenna.CubeBlock.DisplayNameText, "UpdateAfterSimulation10()", Logger.severity.INFO);
+										myLogger.debugLog("found attached antenna: " + antenna.CubeBlock.DisplayNameText, "UpdateAfterSimulation()", Logger.severity.INFO);
 										myAntenna = antenna;
 										break;
 									}
 						}
 						//if (myAntenna == null)
-							//myLogger.debugLog("did not find attached antenna", "UpdateAfterSimulation10()");
+						//myLogger.debugLog("did not find attached antenna", "UpdateAfterSimulation10()");
 
 						MyObjectBuilder_TurretBase builder = myCubeBlock.getSlimObjectBuilder() as MyObjectBuilder_TurretBase;
 						targetMissiles = builder.TargetMissiles;
@@ -257,7 +269,7 @@ namespace Rynchodon.Autopilot.Turret
 					TurretThread.EnqueueAction(Update);
 				}
 			}
-			catch (Exception e) { alwaysLog("Exception: " + e, "UpdateAfterSimulation10()", Logger.severity.ERROR); }
+			catch (Exception e) { alwaysLog("Exception: " + e, "UpdateAfterSimulation()", Logger.severity.ERROR); }
 			finally
 			{
 				updateCount++;
@@ -637,7 +649,7 @@ namespace Rynchodon.Autopilot.Turret
 					}
 				}
 			}
-			else 
+			else
 			{
 				foreach (IMyCubeGrid grid in ObstructingGrids)
 				{

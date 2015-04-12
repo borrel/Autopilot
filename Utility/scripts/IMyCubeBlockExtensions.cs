@@ -168,12 +168,17 @@ namespace Rynchodon
 		/// <summary>
 		/// Tests for sendFrom is working and grid attached or in range. Use without range to skip range test. If sendTo is not a block or a grid, will skip grid test. If sendTo is a block, it must be working.
 		/// </summary>
-		/// <param name="sendFrom"></param>
-		/// <param name="sendTo"></param>
-		/// <param name="range"></param>
-		/// <returns></returns>
+		/// <param name="sendFrom">block to send from</param>
+		/// <param name="sendTo">block to send to</param>
+		/// <param name="friendsOnly">only send if the blocks are friendly</param>
+		/// <param name="range">radio range</param>
+		/// <param name="rangeIsSquared">whether or not radio range is squared</param>
+		/// <returns>true iff a transmission can be sent from sendFrom to sendTo</returns>
 		public static bool canSendTo(this IMyCubeBlock sendFrom, IMyEntity sendTo, bool friendsOnly, float range = 0, bool rangeIsSquared = false)
 		{
+			VRage.Exceptions.ThrowIf<ArgumentNullException>(sendFrom == null, "sendFrom");
+			VRage.Exceptions.ThrowIf<ArgumentNullException>(sendTo == null, "sendTo");
+
 			if (sendFrom.Closed || !sendFrom.IsWorking)
 				return false;
 
