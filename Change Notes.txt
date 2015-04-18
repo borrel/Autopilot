@@ -1,11 +1,12 @@
 Will be moved to steam every release.
 
 major:
-SmartTurrets test azimuth and elevation of target against limits
-SmartTurrets test for friendlies in line-of-sight to target
-SmartTurrets use new options
 
 minor:
-no longer requires .NET 4.5
-NO_PATH clears if obstruction moves
-new defaults for SmartTurrets
+disable reverse thrusters, instead of dampeners, when cruising forward
+dumb turrets are now disabled if there are no possible targets
+react when default targeting acquires unowned block on friendly ship
+bug fix for turrets' nearby enemies test
+made block communication script for filtering simpler to use
+added current time to detected grid display
+when displayed information is old, the background will turn Gray

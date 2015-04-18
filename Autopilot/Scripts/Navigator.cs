@@ -469,7 +469,6 @@ namespace Rynchodon.Autopilot
 		}
 
 		private Lander myLand;
-		private Rynchodon.Autopilot.Jumper.GridJumper myJump = null;
 
 		private void navigateSub()
 		{
@@ -484,24 +483,6 @@ namespace Rynchodon.Autopilot
 			{
 				myLand.matchOrientation(); // continue match
 				return;
-			}
-			if (myJump != null && myJump.currentState != Jumper.GridJumper.State.OFF)
-			{
-				myJump.update(); // continue jumping
-				reportState(ReportableState.JUMP);
-				return;
-			}
-			if (CNS.jump_to_dest && CNS.moveState == NavSettings.Moving.NOT_MOVE && CNS.rotateState == NavSettings.Rotating.NOT_ROTA && MM.distToWayDest > 100)
-			{
-				myJump = new Jumper.GridJumper(myGridDim, MM.currentWaypoint);
-				if (myJump.trySetJump())
-				{
-					log("started Jumper", "navigateSub()", Logger.severity.DEBUG);
-					reportState(ReportableState.JUMP);
-					return;
-				}
-				else
-					log("could not start Jumper", "navigateSub()", Logger.severity.DEBUG);
 			}
 
 			if (!checkAt_wayDest())
@@ -798,10 +779,10 @@ namespace Rynchodon.Autopilot
 		/// <param name="pitch"></param>
 		/// <param name="yaw"></param>
 		/// <param name="precision_stopAndRot">for increasing precision of rotLenSq_stopAndRot</param>
-		internal void calcAndRotate(float? precision_stopAndRot = null)
+		internal void calcAndRotate()
 		{
-			if (precision_stopAndRot == null)
-				precision_stopAndRot = rotLenSq_stopAndRot;
+			//if (precision_stopAndRot == null)
+			//	precision_stopAndRot = rotLenSq_stopAndRot;
 
 			//log("need to rotate "+rot.Length());
 			// need to rotate
@@ -813,7 +794,7 @@ namespace Rynchodon.Autopilot
 						{
 							case NavSettings.Moving.MOVING:
 								{
-									if (MM.rotLenSq > precision_stopAndRot)
+									if (MM.rotLenSq > rotLenSq_stopAndRot)
 									{
 										//log("stopping to rotate", "calcAndRotate()");
 										fullStop("stopping to rorate");
@@ -1134,7 +1115,7 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		internal void fullStop(string reason)
 		{
-			if (currentMove == Vector3.Zero && currentRotate == Vector2.Zero && currentRoll == 0 && dampenersOn()) // already stopped
+			if (currentMove == Vector3.Zero && currentRotate == Vector2.Zero && currentRoll == 0 && dampenersEnabled()) // already stopped
 				return;
 
 			log("full stop: " + reason, "fullStop()", Logger.severity.INFO);
@@ -1216,11 +1197,24 @@ namespace Rynchodon.Autopilot
 			}
 		}
 
-		public bool dampenersOn()
-		{ return ((currentRCcontrol as Ingame.IMyShipController).DampenersOverride); }
+		public bool dampenersEnabled()
+		{ return ((currentRCcontrol as Ingame.IMyShipController).DampenersOverride) && !currentThrust.disabledThrusters(); }
 
 		internal void setDampeners(bool dampenersOn = true)
 		{
+			if (dampenersOn)
+			{
+				myLogger.debugLog("enabling all thrusters", "setDampeners()");
+				currentThrust.enableAllThrusters();
+			}
+			else
+				if (CNS.moveState == NavSettings.Moving.MOVING)
+				{
+					myLogger.debugLog("disabling reverse thrusters", "setDampeners()");
+					currentThrust.disableThrusters(Base6Directions.GetFlippedDirection(currentRCblock.Orientation.Forward));
+					return;
+				}
+
 			try
 			{
 				if ((currentRCcontrol as Ingame.IMyShipController).DampenersOverride != dampenersOn)
@@ -1284,8 +1278,6 @@ namespace Rynchodon.Autopilot
 				newState = ReportableState.LANDED;
 			if (GET_OUT_OF_SEAT) // must override LANDED
 				newState = ReportableState.GET_OUT_OF_SEAT;
-			if (myJump != null && myJump.currentState != Jumper.GridJumper.State.OFF && myJump.currentState != Jumper.GridJumper.State.FAILED)
-				newState = ReportableState.JUMP;
 
 			// did state actually change?
 			if (newState == currentReportable && newState != ReportableState.JUMP && newState != ReportableState.WAITING) // jump and waiting update times
@@ -1308,12 +1300,6 @@ namespace Rynchodon.Autopilot
 				newName.Append("ERROR(" + myInterpreter.instructionErrorIndex + ") : ");
 			// actual state
 			newName.Append(newState);
-			// jump time
-			if (newState == ReportableState.JUMP && myJump != null && myJump.currentState == Jumper.GridJumper.State.TRANSFER)
-			{
-				newName.Append(':');
-				newName.Append((int)myJump.estimatedTimeToReadyMillis() / 1000);
-			}
 			// wait time
 			if (newState == ReportableState.WAITING)
 			{
